@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>劍橋 Flyers (A2) 打字冒險島</title>
+    <style>
+        :root {
+            --bg-color: #f0fdfa; --card-bg: #ffffff; --text-main: #334155; --text-sub: #64748b;
+            --accent: #0ea5e9; --accent-glow: #0284c7; --correct: #16a34a; --wrong: #f59e0b; 
+            --target-glow: #f59e0b; --key-bg: #f8fafc; --key-border: #cbd5e1; --key-shadow: #94a3b8;
+        }
+
+        * { box-sizing: border-box; font-family: "Segoe UI", "微軟正黑體", sans-serif; }
+
+        body {
+            background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+            background-image: radial-gradient(#bae6fd 2px, transparent 2px); background-size: 30px 30px;
+        }
+
+        .header-container {
+            display: flex; flex-direction: column; align-items: center; width: 100%; margin-bottom: 25px;
+        }
+
+        h1 {
+            font-size: 34px; color: var(--accent-glow); margin-bottom: 5px;
+            text-shadow: 2px 2px 0px #e0f2fe; text-align: center; letter-spacing: 1px;
+        }
+
+        .subtitle { color: var(--text-sub); font-size: 16px; margin-bottom: 15px; text-align: center; font-weight: bold; }
+
+        .reset-btn {
+            background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 8px;
+            cursor: pointer; font-size: 14px; font-weight: bold; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+            transition: all 0.2s;
+        }
+        .reset-btn:hover { background: #dc2626; transform: translateY(-2px); box-shadow: 0 6px 10px rgba(239, 68, 68, 0.3); }
+
+        /* 🌟 三欄位對稱排版容器 */
+        .main-layout {
+            display: flex; flex-direction: row; gap: 20px; width: 100%; max-width: 1500px;
+            align-items: flex-start; justify-content: center;
+        }
+
+        /* 左右側選單面板 */
+        .category-selector { 
+            display: flex; flex-direction: column; gap: 10px; width: 230px; flex-shrink: 0;
+            background: white; padding: 15px; border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 4px solid #f1f5f9;
+        }
+
+        .cat-btn {
+            background: #f8fafc; border: 2px solid #e2e8f0; color: var(--text-sub);
+            padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: bold;
+            font-size: 14px; text-align: left; transition: all 0.2s;
+        }
+
+        .cat-btn:hover { background: #e0f2fe; border-color: var(--accent); color: var(--accent); }
+        .cat-btn.active { 
+            background: var(--accent); border-color: var(--accent); color: white; 
+            box-shadow: 0 4px 10px rgba(14,165,233,0.3); transform: scale(1.03); 
+        }
+
+        /* 中間遊戲面板 */
+        #game-board {
+            flex: 1; background: var(--card-bg); border-radius: 24px; padding: 30px; 
+            max-width: 950px; box-shadow: 0 15px 35px rgba(0,0,0,0.08); border: 4px solid #f1f5f9;
+        }
+
+        .stats-container {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+            background: #fffbeb; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px;
+            font-size: 16px; font-weight: bold; border: 2px solid #fde68a; gap: 10px;
+            box-shadow: 0 4px 6px rgba(245, 158, 11, 0.1);
+        }
+
+        .stat-item { background: white; padding: 8px 15px; border-radius: 8px; border: 1px solid #fde68a; }
+        .stat-item span { font-size: 20px; margin-left: 8px; }
+
+        .translation-box { font-size: 20px; color: var(--accent-glow); text-align: center; margin-bottom: 15px; font-weight: bold; }
+
+        .article-display {
+            font-size: 34px; letter-spacing: 1.5px; margin-bottom: 25px; color: var(--text-sub);
+            text-align: left; padding: 30px 20px; background: #f8fafc; border-radius: 16px;
+            border: 2px solid #e2e8f0; line-height: 1.6; font-family: 'Consolas', 'Courier New', monospace;
+            white-space: pre-wrap; word-break: break-word;
+        }
+
+        .char-done { color: var(--correct); font-weight: bold; }
+        .char-current { 
+            color: var(--target-glow); font-weight: bold; background-color: #fef3c7;
+            border-radius: 6px; border-bottom: 4px solid var(--target-glow); padding: 0 2px;
+            animation: blink 1s infinite alternate;
+        }
+        .char-pending { color: #475569; font-weight: 600; }
+        .char-error {
+            color: var(--wrong); background-color: #fef3c7; border-bottom: 4px solid var(--wrong);
+            animation: shake 0.3s;
+        }
+
+        .keyboard { 
+            display: flex; flex-direction: column; gap: 8px; background: #f1f5f9; 
+            padding: 25px; border-radius: 16px; border: 2px solid #e2e8f0;
+        }
+        .row { display: flex; justify-content: center; gap: 8px; }
+        .key {
+            background: var(--key-bg); border-radius: 8px; min-width: 50px; height: 55px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 18px; font-weight: bold; border: 1px solid var(--key-border);
+            border-bottom: 4px solid var(--key-shadow); color: var(--text-main); transition: all 0.1s;
+        }
+        .key .secondary { font-size: 12px; color: var(--text-sub); margin-bottom: 2px; }
+
+        .w-10 { width: 50px; } .w-15 { width: 75px; } .w-175 { width: 90px; }
+        .w-20 { width: 100px; } .w-225 { width: 115px; } .w-25 { width: 125px; } .w-space { width: 350px; }
+
+        .key.target { background: #fde047; border-bottom-color: #ca8a04; color: #000; transform: translateY(-2px); }
+        .key.pressed { background: #bbf7d0; border-bottom-width: 0px; transform: translateY(4px); color: #166534; }
+        .key.pressed-wrong { background: #fde68a; border-bottom-width: 0px; transform: translateY(4px); color: #b45309; }
+
+        #message { font-size: 20px; font-weight: bold; text-align: center; margin-top: 20px; height: 30px; transition: color 0.3s; }
+
+        @media (max-width: 1250px) {
+            .main-layout { flex-direction: column; align-items: center; }
+            .category-selector { width: 100%; flex-direction: row; flex-wrap: wrap; justify-content: center; }
+            .cat-btn { width: auto; text-align: center; }
+        }
+
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25%, 75% { transform: translateX(-5px); } 50% { transform: translateX(5px); } }
+        @keyframes blink { from { background-color: #fef3c7; } to { background-color: transparent; } }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <h1>🏆 劍橋 Flyers (A2) 打字冒險島</h1>
+        <div class="subtitle">累積積分、保持連擊，成為打字大師吧！</div>
+        <button class="reset-btn" onclick="resetAllProgress()">🔄 重新開始 (清除紀錄)</button>
+    </div>
+    
+    <div class="main-layout">
+        <div class="category-selector" id="category-selector-left"></div>
+
+        <div id="game-board">
+            <div class="stats-container">
+                <div class="stat-item">關卡：<span id="stat-progress" style="color:var(--text-main);">0/0</span></div>
+                <div class="stat-item">速度：<span id="stat-wpm" style="color:var(--accent);">0 字/分</span></div>
+                <div class="stat-item">🌟 冒險積分：<span id="stat-score" style="color:var(--target-glow);">0</span></div>
+                <div class="stat-item">🔥 連擊：<span id="stat-combo" style="color:#ef4444;">0</span></div>
+            </div>
+
+            <div class="translation-box" id="translation-box"></div>
+            <div class="article-display" id="article-display"></div>
+            <div class="keyboard" id="keyboard"></div>
+            <div id="message"></div>
+        </div>
+
+        <div class="category-selector" id="category-selector-right"></div>
+    </div>
+
+    <script src="words.js"></script>
+
+    <script>
+        const kbRows = [
+            [ {c:'Backquote', l:'`', s:'~'}, {c:'Digit1', l:'1', s:'!'}, {c:'Digit2', l:'2', s:'@'}, {c:'Digit3', l:'3', s:'#'}, {c:'Digit4', l:'4', s:'$'}, {c:'Digit5', l:'5', s:'%'}, {c:'Digit6', l:'6', s:'^'}, {c:'Digit7', l:'7', s:'&'}, {c:'Digit8', l:'8', s:'*'}, {c:'Digit9', l:'9', s:'('}, {c:'Digit0', l:'0', s:')'}, {c:'Minus', l:'-', s:'_'}, {c:'Equal', l:'=', s:'+'}, {c:'Backspace', l:'Back', w:'w-20'} ],
+            [ {c:'Tab', l:'Tab', w:'w-15'}, {c:'KeyQ', l:'Q'}, {c:'KeyW', l:'W'}, {c:'KeyE', l:'E'}, {c:'KeyR', l:'R'}, {c:'KeyT', l:'T'}, {c:'KeyY', l:'Y'}, {c:'KeyU', l:'U'}, {c:'KeyI', l:'I'}, {c:'KeyO', l:'O'}, {c:'KeyP', l:'P'}, {c:'BracketLeft', l:'[', s:'{'}, {c:'BracketRight', l:']', s:'}'}, {c:'Backslash', l:'\\', s:'|', w:'w-15'} ],
+            [ {c:'CapsLock', l:'Caps', w:'w-175'}, {c:'KeyA', l:'A'}, {c:'KeyS', l:'S'}, {c:'KeyD', l:'D'}, {c:'KeyF', l:'F'}, {c:'KeyG', l:'G'}, {c:'KeyH', l:'H'}, {c:'KeyJ', l:'J'}, {c:'KeyK', l:'K'}, {c:'KeyL', l:'L'}, {c:'Semicolon', l:';', s:':'}, {c:'Quote', l:"'", s:'"'}, {c:'Enter', l:'Enter', w:'w-225'} ],
+            [ {c:'ShiftLeft', l:'Shift', w:'w-225'}, {c:'KeyZ', l:'Z'}, {c:'KeyX', l:'X'}, {c:'KeyC', l:'C'}, {c:'KeyV', l:'V'}, {c:'KeyB', l:'B'}, {c:'KeyN', l:'N'}, {c:'KeyM', l:'M'}, {c:'Comma', l:',', s:'<'}, {c:'Period', l:'.', s:'>'}, {c:'Slash', l:'/', s:'?'}, {c:'ShiftRight', l:'Shift', w:'w-25'} ],
+            [ {c:'ControlLeft', l:'Ctrl', w:'w-15'}, {c:'MetaLeft', l:'Win', w:'w-15'}, {c:'AltLeft', l:'Alt', w:'w-15'}, {c:'Space', l:' ', w:'w-space'}, {c:'AltRight', l:'Alt', w:'w-15'}, {c:'ControlRight', l:'Ctrl', w:'w-15'} ]
+        ];
+
+        let currentCatIdx = 0;
+        let currentSentenceIdx = 0;
+        let sentenceText = "";
+        let currentCharIndex = 0;
+        
+        let sentenceHasError = false; 
+        let totalScore = 0;
+        let currentCombo = 0;
+        let totalKeystrokes = 0;
+        let correctKeystrokes = 0;
+        let startTime = null;
+        let wpmInterval = null;
+
+        const keyMap = {};
+        function buildKeyMap() {
+            kbRows.forEach(row => {
+                row.forEach(key => {
+                    if(key.l) keyMap[key.l.toLowerCase()] = { id: key.c, shift: false };
+                    if(key.l && /[a-zA-Z]/.test(key.l)) keyMap[key.l.toUpperCase()] = { id: key.c, shift: true };
+                    if(key.s) keyMap[key.s] = { id: key.c, shift: true };
+                });
+            });
+            keyMap[' '] = { id: 'Space', shift: false };
+        }
+
+        function loadProgress() {
+            const savedCat = localStorage.getItem('flyers_currentCatIdx');
+            const savedSent = localStorage.getItem('flyers_currentSentenceIdx');
+            const savedScore = localStorage.getItem('flyers_totalScore');
+
+            if (savedCat !== null && savedSent !== null) {
+                currentCatIdx = parseInt(savedCat, 10);
+                currentSentenceIdx = parseInt(savedSent, 10);
+                totalScore = parseInt(savedScore, 10) || 0;
+
+                setTimeout(() => {
+                    document.getElementById('message').innerText = `👋 歡迎回來！已為你恢復上次進度，目前積分：${totalScore} 分！`;
+                    document.getElementById('message').style.color = "var(--accent)";
+                }, 500);
+            }
+        }
+
+        function saveProgress() {
+            localStorage.setItem('flyers_currentCatIdx', currentCatIdx);
+            localStorage.setItem('flyers_currentSentenceIdx', currentSentenceIdx);
+            localStorage.setItem('flyers_totalScore', totalScore);
+        }
+
+        function resetAllProgress() {
+            if(confirm("確定要清除所有的積分與進度，重新開始挑戰嗎？")) {
+                localStorage.removeItem('flyers_currentCatIdx');
+                localStorage.removeItem('flyers_currentSentenceIdx');
+                localStorage.removeItem('flyers_totalScore');
+                location.reload(); 
+            }
+        }
+
+        function initCategories() {
+            const containerLeft = document.getElementById('category-selector-left');
+            const containerRight = document.getElementById('category-selector-right');
+            containerLeft.innerHTML = '';
+            containerRight.innerHTML = '';
+            
+            if (typeof datasets === 'undefined') {
+                containerLeft.innerHTML = '<div style="color:red; font-weight:bold; padding:10px;">錯誤：找不到題庫！</div>';
+                return;
+            }
+
+            const midpoint = Math.ceil(datasets.length / 2);
+
+            datasets.forEach((cat, index) => {
+                const btn = document.createElement('button');
+                btn.className = `cat-btn ${index === currentCatIdx ? 'active' : ''}`;
+                btn.innerText = cat.category;
+                btn.onclick = () => {
+                    currentCatIdx = index;
+                    currentSentenceIdx = 0; 
+                    saveProgress(); 
+                    initCategories(); 
+                    loadSentence();
+                };
+
+                if (index < midpoint) {
+                    containerLeft.appendChild(btn);
+                } else {
+                    containerRight.appendChild(btn);
+                }
+            });
+        }
+
+        function resetSpeedStats() {
+            startTime = null; totalKeystrokes = 0; correctKeystrokes = 0; sentenceHasError = false;
+            clearInterval(wpmInterval); document.getElementById('stat-wpm').innerText = '0 字/分';
+        }
+
+        function updateScoreBoard() {
+            document.getElementById('stat-score').innerText = totalScore;
+            document.getElementById('stat-combo').innerText = currentCombo;
+        }
+
+        function startTimer() {
+            if (!startTime) {
+                startTime = Date.now();
+                wpmInterval = setInterval(() => {
+                    let elapsedMins = (Date.now() - startTime) / 60000;
+                    if (elapsedMins > 0) {
+                        let wpm = Math.round((correctKeystrokes / 5) / elapsedMins);
+                        document.getElementById('stat-wpm').innerText = `${wpm} 字/分`;
+                    }
+                }, 1000);
+            }
+        }
+
+        function loadSentence() {
+            if (typeof datasets === 'undefined') return;
+            const currentCat = datasets[currentCatIdx];
+            if (currentSentenceIdx >= currentCat.sentences.length) {
+                document.getElementById('message').innerText = `🏆 太厲害了！你完成了這關，總積分：${totalScore} 分！請點選其他主題！`;
+                document.getElementById('message').style.color = "var(--correct)";
+                document.getElementById('article-display').innerHTML = "";
+                document.getElementById('translation-box').innerText = "";
+                return;
+            }
+
+            const currentItem = currentCat.sentences[currentSentenceIdx];
+            sentenceText = currentItem.en;
+            currentCharIndex = 0;
+            resetSpeedStats();
+            updateScoreBoard();
+            
+            document.getElementById('translation-box').innerText = currentItem.zh;
+            updateDisplay();
+        }
+
+        function renderKeyboard() {
+            const kbContainer = document.getElementById('keyboard');
+            kbContainer.innerHTML = '';
+            kbRows.forEach(row => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'row';
+                row.forEach(k => {
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = `key ${k.w || ''}`;
+                    keyDiv.id = `key-${k.c}`;
+                    if (k.s) keyDiv.innerHTML = `<span class="secondary">${k.s}</span><span>${k.l}</span>`;
+                    else keyDiv.innerHTML = `<span>${k.l === ' ' ? '空白鍵' : k.l}</span>`;
+                    rowDiv.appendChild(keyDiv);
+                });
+                kbContainer.appendChild(rowDiv);
+            });
+        }
+
+        function updateDisplay(isError = false) {
+            const currentCat = datasets[currentCatIdx];
+            document.getElementById('stat-progress').innerText = `${currentSentenceIdx + 1} / ${currentCat.sentences.length}`;
+
+            let articleHTML = "";
+            for (let i = 0; i < sentenceText.length; i++) {
+                let charToDisplay = sentenceText[i]; 
+                if (i < currentCharIndex) articleHTML += `<span class="char-done">${charToDisplay}</span>`;
+                else if (i === currentCharIndex) {
+                    let errClass = isError ? "char-error" : "";
+                    articleHTML += `<span class="char-current ${errClass}">${charToDisplay}</span>`;
+                } else articleHTML += `<span class="char-pending">${charToDisplay}</span>`;
+            }
+            document.getElementById('article-display').innerHTML = articleHTML;
+            highlightNextKey();
+        }
+
+        function highlightNextKey() {
+            document.querySelectorAll('.key').forEach(el => el.classList.remove('target', 'pressed', 'pressed-wrong'));
+            if (currentCharIndex >= sentenceText.length) return;
+            const keyInfo = keyMap[sentenceText[currentCharIndex]];
+            if (keyInfo) {
+                if (keyInfo.shift) {
+                    document.getElementById('key-ShiftLeft').classList.add('target');
+                    document.getElementById('key-ShiftRight').classList.add('target');
+                }
+                const targetEl = document.getElementById(`key-${keyInfo.id}`);
+                if (targetEl) targetEl.classList.add('target');
+            }
+        }
+
+        // 🌟 升級版：唸出英文句子，並自動接續鼓勵語音引導跟讀
+        function playTTS(text, callback) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+
+                const sentenceUtterance = new SpeechSynthesisUtterance(text);
+                sentenceUtterance.lang = 'en-US'; 
+                sentenceUtterance.rate = 0.82; 
+                
+                const encouragements = [
+                    "Awesome! Now, your turn, please repeat!",
+                    "Great job! Can you say it like me?",
+                    "Fantastic! Now, say it out loud!"
+                ];
+                const randomCheer = encouragements[Math.floor(Math.random() * encouragements.length)];
+                const cheerUtterance = new SpeechSynthesisUtterance(randomCheer);
+                cheerUtterance.lang = 'en-US';
+                cheerUtterance.rate = 0.9;
+
+                sentenceUtterance.onstart = () => {
+                    document.getElementById('message').innerText = "🔊 外師示範中：請專心聽...";
+                    document.getElementById('message').style.color = "var(--accent-glow)";
+                };
+                
+                sentenceUtterance.onend = () => {
+                    document.getElementById('message').innerText = "🎤 換你了！請大聲跟著外師唸一次！";
+                    document.getElementById('message').style.color = "var(--correct)";
+                    window.speechSynthesis.speak(cheerUtterance);
+                };
+
+                cheerUtterance.onend = () => {
+                    if (callback) callback();
+                };
+
+                window.speechSynthesis.speak(sentenceUtterance);
+            } else {
+                if (callback) callback();
+            }
+        }
+
+        window.addEventListener('keydown', function(event) {
+            if (['Shift', 'Control', 'Alt', 'Meta', 'Tab', 'CapsLock'].includes(event.key)) return;
+            if (event.key === ' ' || event.key === "'" || event.key === "/") event.preventDefault();
+            if (currentCharIndex >= sentenceText.length || document.getElementById('article-display').innerHTML === "") return;
+
+            const expectedChar = sentenceText[currentCharIndex];
+            const typedChar = event.key;
+            let pressedKeyId = event.code; 
+            const keyEl = document.getElementById(`key-${pressedKeyId}`);
+            
+            startTimer();
+            totalKeystrokes++;
+
+            if (typedChar === expectedChar) {
+                if(keyEl) keyEl.classList.add('pressed');
+                
+                totalScore += 10;
+                currentCombo += 1;
+                updateScoreBoard();
+
+                const cheers = ["👍 太棒了！", "✨ 繼續保持！", "🚀 完美擊中！"];
+                document.getElementById('message').innerText = cheers[Math.floor(Math.random() * cheers.length)];
+                document.getElementById('message').style.color = "var(--correct)";
+                
+                correctKeystrokes++; currentCharIndex++;
+                updateDisplay();
+
+                if (currentCharIndex >= sentenceText.length) {
+                    clearInterval(wpmInterval);
+                    if (!sentenceHasError) {
+                        totalScore += 100; 
+                        updateScoreBoard();
+                        document.getElementById('message').innerText = "🌟 完美通關！額外獎勵 +100 分！準備聽發音...";
+                        document.getElementById('message').style.color = "var(--accent-glow)";
+                        window.speechSynthesis.cancel();
+                        playTTS(sentenceText, () => { 
+                            setTimeout(() => { 
+                                currentSentenceIdx++; 
+                                saveProgress(); 
+                                loadSentence(); 
+                            }, 1000); 
+                        });
+                    } else {
+                        document.getElementById('message').innerText = "👏 順利完成句子！繼續挑戰下一句累積積分！";
+                        document.getElementById('message').style.color = "var(--text-main)";
+                        setTimeout(() => { 
+                            currentSentenceIdx++; 
+                            saveProgress(); 
+                            loadSentence(); 
+                        }, 2000);
+                    }
+                }
+            } else {
+                if(keyEl) keyEl.classList.add('pressed-wrong');
+                sentenceHasError = true; 
+                
+                currentCombo = 0;
+                updateScoreBoard();
+
+                document.getElementById('message').innerText = "💪 加油！看看發黃光的按鍵在哪裡！";
+                document.getElementById('message').style.color = "var(--wrong)";
+                updateDisplay(true); 
+            }
+        });
+
+        window.addEventListener('keyup', function(event) {
+            document.querySelectorAll('.key').forEach(el => el.classList.remove('pressed', 'pressed-wrong'));
+        });
+
+        buildKeyMap(); 
+        renderKeyboard(); 
+        loadProgress(); 
+        initCategories(); 
+        loadSentence();
+    </script>
+</body>
+</html>
